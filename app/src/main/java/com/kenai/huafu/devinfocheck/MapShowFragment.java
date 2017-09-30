@@ -64,5 +64,6 @@ public class MapShowFragment extends Fragment {
 
 
         mbaiduMap.initMarkerClickEvent(baidumap_infowindow);
+        //qqweqqwewww
     }
 }

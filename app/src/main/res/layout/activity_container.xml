@@ -1,0 +1,51 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout
+    xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    tools:context="com.kenai.huafu.devinfocheck.Container"
+    android:weightSum="1">
+    <FrameLayout
+        android:layout_width="match_parent"
+        android:layout_height="390dp"
+        android:layout_weight="0.96"
+        android:id="@+id/frame_container"
+        >
+
+    </FrameLayout>
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:orientation="horizontal"
+        android:layout_height="60dp">
+        <Button
+            android:layout_width="80dp"
+            android:text="设备监控"
+            android:id="@+id/DevCheck"
+            android:layout_height="match_parent"/>
+        <Button
+            android:layout_width="80dp"
+            android:text="地图显示"
+            android:id="@+id/showmap"
+            android:layout_height="match_parent"/>
+
+        <Button
+            android:layout_width="80dp"
+            android:text="报警信息"
+            android:id="@+id/Alarm"
+            android:layout_height="match_parent"/>
+
+        <Button
+            android:layout_width="80dp"
+            android:text="信息查询"
+            android:id="@+id/InfoCheck"
+            android:layout_height="match_parent"/>
+        <Button
+            android:layout_width="match_parent"
+            android:text="我"
+            android:id="@+id/Self"
+            android:layout_height="match_parent"/>
+    </LinearLayout>
+</LinearLayout>

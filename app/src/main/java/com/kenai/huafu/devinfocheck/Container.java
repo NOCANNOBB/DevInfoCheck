@@ -3,6 +3,7 @@ package com.kenai.huafu.devinfocheck;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.Intent;
 import android.icu.text.IDNA;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
@@ -26,6 +27,7 @@ public class Container extends AppCompatActivity {
     private Button Own;
     private FrameLayout frameContainer;
     private Button InfoCK;
+    private String mPhoneNumber;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -38,6 +40,10 @@ public class Container extends AppCompatActivity {
         Own = (Button)findViewById(R.id.Self);
         InfoCK = (Button)findViewById(R.id.InfoCheck) ;
         MapShow = (Button)findViewById(R.id.showmap);
+
+        Intent intent = getIntent();
+        mPhoneNumber = intent.getStringExtra(MainActivity.EXTREA_PHONE);
+
         //frameContainer = (FrameLayout)findViewById(R.id.frame_container);
 
         //设备监控
@@ -45,6 +51,10 @@ public class Container extends AppCompatActivity {
             @Override
             public void onClick(View view) {
                 DevCheckFragment fragment1 = new DevCheckFragment();
+
+                Bundle bundle = new Bundle();
+                bundle.putString("phone",mPhoneNumber);
+                fragment1.setArguments(bundle);
                 addFragment(fragment1, "DevCheckFragment");
             }
         });

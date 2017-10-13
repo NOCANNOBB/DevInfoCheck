@@ -5,7 +5,12 @@ import android.app.Dialog;
 import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -16,8 +21,14 @@ import android.widget.ArrayAdapter;
 import android.widget.ListView;
 import android.widget.Toast;
 
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.kenai.huafu.DataTrasmation.Define;
+import com.kenai.huafu.DataTrasmation.DevDataInfo;
 import com.kenai.huafu.DataTrasmation.DevInfo;
+import com.kenai.huafu.DataTrasmation.Htpp;
 import com.kenai.huafu.DataTrasmation.ListViewSimpleCurAdapter;
+import com.kenai.huafu.DataTrasmation.Register;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -37,6 +48,10 @@ public class DevCheckFragment extends Fragment {
     private FragmentManager manager;
     private FragmentTransaction ft;
 
+    private String mPhoneNumber;
+    private String mDevId;
+
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState){
         return inflater.inflate(R.layout.devcheck_frame,container,false);
@@ -46,10 +61,19 @@ public class DevCheckFragment extends Fragment {
     public void onActivityCreated(Bundle savedInstanceState) {
         super.onActivityCreated(savedInstanceState);
         mListView = (ListView)getActivity().findViewById(R.id.DevList);
-        manager = getFragmentManager();
-        setInfo();
 
-        FillListView();
+
+        manager = getFragmentManager();
+
+        Bundle bundle = getArguments();
+
+        mPhoneNumber = bundle.getString("phone");
+
+        //{
+            setInfo();
+        //}
+
+
 
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
             public void onItemClick(AdapterView<?> parent, View view,int position, long id) {
@@ -57,6 +81,16 @@ public class DevCheckFragment extends Fragment {
             }
         });
         SetItemContent();
+    }
+    @Override
+    public void onDestroy(){
+
+        Define.g_IsDataGetThreadStop = true;
+        try{
+            Thread.sleep(1000);
+        }
+        catch (InterruptedException iex){}
+        super.onDestroy();
     }
 
 
@@ -66,7 +100,7 @@ public class DevCheckFragment extends Fragment {
         for(int i = 0; i < mlistInfo.size(); i++){
             DevInfo dinfo = mlistInfo.get(i);
             Map<String, Object> map = new HashMap<String, Object>();
-            map.put("title",dinfo.getTitle());
+            map.put("title",dinfo.getId());
             String strText = "电流：" + dinfo.getDevDIANLIU() + "  电压：" + dinfo.getDevDIANYA()+ "  温度：" + dinfo.getDevWENDU();
             map.put("info",strText);
             map.put("img",dinfo.getAvatar());
@@ -96,14 +130,14 @@ public class DevCheckFragment extends Fragment {
 
                 if(position == 0)
                 {
-                    mlistInfo.remove(ClickItemPostion);
-                    FillListView();
+                    DoRemoveServer(ClickItemPostion);
                     Toast.makeText(getContext(),"第一个",Toast.LENGTH_SHORT).show();
                 }else if (position == 1){
                     ft = manager.beginTransaction();
                     AlarmSetting AS = new AlarmSetting();
                     Bundle bundle = new Bundle();
                     bundle.putString("DevID",mlistInfo.get(ClickItemPostion).getId());
+                    bundle.putString("phone",mPhoneNumber);
                     AS.setArguments(bundle);
                     ft.replace(R.id.frame_container, AS);
                     ft.addToBackStack(null);
@@ -116,6 +150,17 @@ public class DevCheckFragment extends Fragment {
             }
         });
     }
+
+    private void DoRemoveServer(int ClickItemPostion){
+
+        mDevId = mlistInfo.get(ClickItemPostion).getId();
+
+        Thread tpThread = new Thread(GetDevDelNetWork);
+        tpThread.start();
+
+        mlistInfo.remove(ClickItemPostion);
+    }
+
 
 
     private void SetItemContent(){
@@ -146,18 +191,118 @@ public class DevCheckFragment extends Fragment {
 
     public void setInfo(){
         mlistInfo.clear();
-        int i=0;
-        while(i<10){
-            DevInfo information = new DevInfo();
-            information.setId("1000" + Integer.toString(i));
-            information.setTitle("标题"+i);
-            information.setDevDIANLIU("33");
-            information.setDevDIANYA("22");
-            information.setDevWENDU("11");
-            information.setAvatar(R.drawable.bingxiang);
 
-            mlistInfo.add(information); //将新的info对象加入到信息列表中
-            i++;
-        }
+        Thread tpThread = new Thread(GetDevListNetWork);
+        tpThread.start();
     }
+
+    Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            Bundle data = msg.getData();
+            String val = data.getString("value");
+            String val2 = data.getString("bvalue");
+
+            String BackStr = val;
+
+            if(BackStr == "")
+            {
+                BackStr = "Get NULL";
+            }
+            if(val2 == "1"){
+                GetDevDataInfo(val);
+            }
+            // Toast.makeText(FirstActivity.this, "You clicked Button 1", Toast.LENGTH_SHORT).show();
+            Toast.makeText(getContext(),BackStr,Toast.LENGTH_SHORT).show();
+        }
+    };
+
+
+    private void GetDevDataInfo(String DevInfo){
+        Gson gson =new Gson();
+        List<DevDataInfo> reg = gson.fromJson(DevInfo, new TypeToken<List<DevDataInfo>>() {}.getType());
+
+        for (DevDataInfo stu : reg) {
+            boolean isfind = false;
+            for(DevInfo devInfo: mlistInfo){
+                if(stu.getServerDevInfo().getDevID().compareTo(devInfo.getId()) == 0){
+                    isfind = true;
+                    devInfo.setDevWENDU(stu.getWENDU());
+                    devInfo.setDevDIANYA(stu.getDIANYA());
+                    devInfo.setDevDIANLIU(stu.getDIANLIU());
+                    break;
+                }
+            }
+            if(isfind == false){
+                DevInfo devInfo = new DevInfo();
+                devInfo.setId(stu.getServerDevInfo().getDevID());
+                devInfo.setDevDIANLIU(stu.getDIANLIU());
+                devInfo.setDevDIANYA(stu.getDIANYA());
+                devInfo.setDevWENDU(stu.getWENDU());
+                devInfo.setAvatar(R.drawable.bingxiang);
+                devInfo.setTitle(stu.getServerDevInfo().getDevName());
+                mlistInfo.add(devInfo);
+            }
+        }
+        FillListView();
+
+    }
+
+
+    Runnable GetDevListNetWork = new Runnable() {
+
+        @Override
+        public void run() {
+            // TODO
+            // 在这里进行 http request.网络请求相关操作
+            while (true) {
+
+                if(Define.g_IsDataGetThreadStop){
+                    Define.g_IsDataGetThreadStop = false;
+                    Log.d("info","thread stop");
+                    break;
+                }
+
+                try {
+                    String PhoneNumber = mPhoneNumber;
+                    String RequestUrl = Htpp.BasicUrl + "/GetDevInfos/" + mPhoneNumber;
+                    String BackStr = Htpp.executeHttpGet(RequestUrl);
+                    Message msg = new Message();
+                    Bundle data = new Bundle();
+                    data.putString("value", BackStr);
+                    data.putString("bvalue", "1");
+                    msg.setData(data);
+                    handler.sendMessage(msg);
+
+                    Thread.sleep(3000);
+                }
+                catch (InterruptedException iex){
+
+                }
+            }
+        }
+    };
+
+    Runnable GetDevDelNetWork = new Runnable() {
+
+        @Override
+        public void run() {
+            // TODO
+            // 在这里进行 http request.网络请求相关操作
+           // while (true) {
+               // try {
+                    String PhoneNumber = mPhoneNumber;
+                    String RequestUrl = Htpp.BasicUrl + "/DelDev?pHoneNumber=" + mPhoneNumber + "&Devid=" + mDevId;
+                    String BackStr = Htpp.executeHttpGet(RequestUrl);
+                    Message msg = new Message();
+                    Bundle data = new Bundle();
+                    data.putString("value", BackStr);
+                    data.putString("bvalue", "2");
+                    msg.setData(data);
+                    handler.sendMessage(msg);
+        }
+    };
+
+
 }

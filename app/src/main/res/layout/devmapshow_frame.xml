@@ -4,8 +4,8 @@
               android:layout_width="match_parent"
               android:orientation="vertical"
               xmlns:android="http://schemas.android.com/apk/res/android"
-    >
 
+    >
     <com.baidu.mapapi.map.MapView
         android:id="@+id/baidumap"
         android:layout_width="match_parent"

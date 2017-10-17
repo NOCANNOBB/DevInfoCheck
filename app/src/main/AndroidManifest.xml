@@ -61,6 +61,8 @@
         </activity>
         <activity android:name=".RegisterActivity">
         </activity>
+        <activity android:name=".DevCodeScanActivity">
+        </activity>
     </application>
 
 </manifest>

@@ -15,7 +15,7 @@ public class AlarmSoundPlay {
 
     private SoundPool mSoundPool;
     private int PlayingID = -1;
-
+    public boolean IsSoundPlaying = false;
     public void PlaySound(Context context,int SoundID) {
         mSoundPool = new SoundPool(3, AudioManager.STREAM_MUSIC,5);
         mSoundPool.load(context,SoundID,1);
@@ -23,6 +23,7 @@ public class AlarmSoundPlay {
             @Override
             public void onLoadComplete(SoundPool soundPool, int i, int i1) {
                 PlayingID = soundPool.play(i,1,1,0,-1,1);
+                IsSoundPlaying  = true;
             }
         });
     }
@@ -30,6 +31,7 @@ public class AlarmSoundPlay {
     public void StopSondPlay(){
         if(PlayingID == -1){ return;}
         mSoundPool.stop(PlayingID);
+        IsSoundPlaying  = false;
     }
 
 }

@@ -5,6 +5,9 @@ import android.app.Dialog;
 import android.app.Fragment;
 import android.content.DialogInterface;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
+import android.util.Log;
 import android.view.ContextMenu;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -17,8 +20,10 @@ import android.widget.ListView;
 import android.widget.Toast;
 
 import com.kenai.huafu.DataTrasmation.AlarmSoundPlay;
+import com.kenai.huafu.DataTrasmation.Define;
 import com.kenai.huafu.DataTrasmation.DevAlarmInfo;
 import com.kenai.huafu.DataTrasmation.DevInfo;
+import com.kenai.huafu.DataTrasmation.Htpp;
 import com.kenai.huafu.DataTrasmation.ListViewSimpleCurAdapter;
 
 import java.util.ArrayList;
@@ -42,13 +47,15 @@ public class AlarmFragment extends Fragment {
     private ListView mListView;
     private ListViewSimpleCurAdapter listAdapter;
 
+    private boolean isThreadStop = false;
+
+    private String ConfirmDevID;
+    //private Handler handler;
+
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         return inflater.inflate(R.layout.alarminfo_frame, container, false);
-
-
-
     }
 
     @Override
@@ -60,7 +67,7 @@ public class AlarmFragment extends Fragment {
         setInfo();
 
 
-        FillListView();
+       // FillListView();
         mListView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
             public void onItemClick(AdapterView<?> parent, View view,int position, long id) {
                 ClickItemPostion = position;
@@ -69,21 +76,17 @@ public class AlarmFragment extends Fragment {
         SetItemContent();
     }
 
-    private void FillListView(){
 
-        List<Map<String,Object>>rlist = new ArrayList<Map<String,Object>>();
-        for(int i = 0; i < mAlarmList.size(); i++){
-            DevAlarmInfo dinfo = mAlarmList.get(i);
-            Map<String, Object> map = new HashMap<String, Object>();
-            map.put("DevID","设备ID：" + dinfo.getDevID());
 
-            map.put("Alarminfo",dinfo.getAlarmInfo());
-            map.put("img",dinfo.getAvatar());
-            rlist.add(map);
+    @Override
+    public void onDestroy(){
+
+        isThreadStop = true;
+        try{
+            Thread.sleep(1000);
         }
-
-        listAdapter = new ListViewSimpleCurAdapter(getActivity(),rlist,R.layout.devalarmlistitem,new String[]{"DevID","Alarminfo","img"},new int[]{R.id.DevID,R.id.Alarminfo,R.id.gifimg});
-        mListView.setAdapter(listAdapter);
+        catch (InterruptedException iex){}
+        super.onDestroy();
     }
 
 
@@ -104,11 +107,11 @@ public class AlarmFragment extends Fragment {
 
                 if(position == 0)
                 {
-                    mAlarmList.remove(ClickItemPostion);
-                    FillListView();
-                    Toast.makeText(getContext(),"第一个",Toast.LENGTH_SHORT).show();
+                   // ConfirmDevID = Define.g_DevAlarmInfo.get()
+                    ConfirmAlarm();
+                    Toast.makeText(getContext(),"第一个" + ClickItemPostion,Toast.LENGTH_SHORT).show();
                 }else {
-                    Toast.makeText(getContext(),"第二个",Toast.LENGTH_SHORT).show();
+                    Toast.makeText(getContext(),"第二个" + ClickItemPostion,Toast.LENGTH_SHORT).show();
                 }
                 dialog.dismiss();
             }
@@ -124,6 +127,35 @@ public class AlarmFragment extends Fragment {
             }
         });
     }
+
+    private void ConfirmAlarm(){
+        Thread tpThread = new Thread(ConfirmDevAlarm);
+        tpThread.start();
+    }
+
+
+    Runnable ConfirmDevAlarm = new Runnable() {
+
+        @Override
+        public void run() {
+            Define.lock.lock();
+            String DevID = "";
+            try {
+                DevID = Define.g_DevAlarmInfo.get(ClickItemPostion).getDevID();
+            }
+            finally {
+                Define.lock.unlock();
+            }
+            String RequestUrl = Htpp.BasicUrl + "/ConfirmDevAlarm/" + DevID;
+            String BackStr = Htpp.executeHttpGet(RequestUrl);
+            Message msg = new Message();
+            Bundle data = new Bundle();
+            data.putString("value", BackStr);
+            msg.setData(data);
+            handler.sendMessage(msg);
+        }
+    };
+
 
     public boolean onContextItemSelected(MenuItem item){
         switch (item.getItemId()) {
@@ -146,16 +178,82 @@ public class AlarmFragment extends Fragment {
 
     public void setInfo(){
         mAlarmList.clear();
-        int i=0;
-        while(i<10){
-            DevAlarmInfo information = new DevAlarmInfo();
+        Thread tpThread = new Thread(RefreshDevAlarmInfo);
+        tpThread.start();
 
-            information.setDevID("报警1000" + Integer.toString(i));
-            information.setAlarmInfo("温度过高报警，当前温度 30℃");
-            information.setAlarmLevel("2");
-            information.setAvatar(R.drawable.alarm1);
-            mAlarmList.add(information); //将新的info对象加入到信息列表中
-            i++;
+    }
+
+
+
+    Runnable RefreshDevAlarmInfo = new Runnable() {
+
+        @Override
+        public void run() {
+            // TODO
+            // 在这里进行 http request.网络请求相关操作
+            while (true) {
+
+                if(isThreadStop){
+                    isThreadStop = false;
+                    //Log.d("info","thread stop");
+                    break;
+                }
+
+                try {
+                    Message msg = new Message();
+                    //Message msg = new Message();
+                    Bundle data = new Bundle();
+                    data.putString("value", "AlarmList");
+                    msg.setData(data);
+                    handler.sendMessage(msg);
+                    Thread.sleep(3000);
+                }
+                catch (InterruptedException iex){
+
+                }
+            }
+        }
+    };
+
+    Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            Bundle data = msg.getData();
+            String val = data.getString("value");
+            if(val.compareTo("AlarmList") == 0) {
+                FillListView();
+            }
+            else
+            {
+                FillListView();
+                Toast.makeText(getContext(),val,Toast.LENGTH_SHORT).show();
+            }
+        }
+    };
+
+
+    private void FillListView(){
+        Define.lock.lock();
+        List<Map<String, Object>> rlist = null;
+        try {
+            rlist = new ArrayList<Map<String, Object>>();
+            for (int i = 0; i < Define.g_DevAlarmInfo.size(); i++) {
+                DevAlarmInfo dinfo = Define.g_DevAlarmInfo.get(i);
+                Map<String, Object> map = new HashMap<String, Object>();
+                map.put("DevID","设备ID：" + dinfo.getDevID());
+                String strText = dinfo.getAlarmInfo();
+                map.put("Alarminfo",strText);
+                map.put("img",dinfo.getAvatar());
+                rlist.add(map);
+            }
+        }
+        finally {
+            Define.lock.unlock();
+        }
+        if(rlist !=null) {
+            ListViewSimpleCurAdapter tplistAdapter = new ListViewSimpleCurAdapter(getActivity(), rlist, R.layout.devalarmlistitem, new String[]{"DevID", "Alarminfo", "img"}, new int[]{R.id.DevID, R.id.Alarminfo, R.id.gifimg});
+            mListView.setAdapter(tplistAdapter);
         }
     }
 

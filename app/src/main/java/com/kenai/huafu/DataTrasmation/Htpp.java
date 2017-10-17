@@ -16,7 +16,7 @@ import java.net.URL;
 public class Htpp {
 
 
-    public static String BasicUrl = "http://192.168.1.112:8742/JsonServer";
+    public static String BasicUrl = "http://192.168.1.116:8742/JsonServer";
 
     public static String executeHttpGet(String RequestURL) {
         String result = null;

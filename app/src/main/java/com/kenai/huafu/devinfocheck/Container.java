@@ -4,18 +4,34 @@ import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Intent;
+import android.graphics.Bitmap;
 import android.icu.text.IDNA;
+import android.os.Handler;
+import android.os.Message;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.Button;
 import android.widget.FrameLayout;
 import android.widget.Toast;
 
 import com.baidu.mapapi.SDKInitializer;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
+import com.karics.library.zxing.android.CaptureActivity;
+import com.kenai.huafu.DataTrasmation.AlarmSoundPlay;
+import com.kenai.huafu.DataTrasmation.Define;
+import com.kenai.huafu.DataTrasmation.DevAlarm;
+import com.kenai.huafu.DataTrasmation.DevAlarmInfo;
+import com.kenai.huafu.DataTrasmation.DevDataInfo;
+import com.kenai.huafu.DataTrasmation.Htpp;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -28,12 +44,32 @@ public class Container extends AppCompatActivity {
     private FrameLayout frameContainer;
     private Button InfoCK;
     private String mPhoneNumber;
+    private AlarmSoundPlay mAlarm;
+    private Thread m_AlarmThread;
+    private int m_SleepTime = 3000;
+    private boolean IsActDestory = false;
+
+    private static final int REQUEST_CODE_SCAN = 0x0000;
+    private static final String DECODED_CONTENT_KEY = "codedContent";
+    private static final String DECODED_BITMAP_KEY = "codedBitmap";
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+
+       // requestWindowFeature(Window.FEATURE_NO_TITLE);//remove title bar  即隐藏标题栏
+      //  getSupportActionBar().hide();// 隐藏ActionBar
+        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+
         SDKInitializer.initialize(getApplicationContext());
+
         setContentView(R.layout.activity_container);
+
+        mAlarm =new AlarmSoundPlay();
+
+        m_AlarmThread = new Thread(BKAlarmInfoGet);
+        m_AlarmThread.start();
 
         DevCheck = (Button)findViewById(R.id.DevCheck);
         Alarm = (Button)findViewById(R.id.Alarm);
@@ -54,6 +90,7 @@ public class Container extends AppCompatActivity {
 
                 Bundle bundle = new Bundle();
                 bundle.putString("phone",mPhoneNumber);
+                bundle.putString("alarm","");
                 fragment1.setArguments(bundle);
                 addFragment(fragment1, "DevCheckFragment");
             }
@@ -95,6 +132,105 @@ public class Container extends AppCompatActivity {
 
     }
 
+    @Override
+    public void onDestroy(){
+
+        IsActDestory = true;
+        try{
+            Thread.sleep(1000);
+        }
+        catch (InterruptedException iex){}
+
+        if (mAlarm.IsSoundPlaying) {
+            mAlarm.StopSondPlay();
+        }
+
+        super.onDestroy();
+    }
+
+    Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            Bundle data = msg.getData();
+            String val = data.getString("value");
+            if (!val.isEmpty()) {
+                Gson gson =new Gson();
+                List<DevAlarm> reg = gson.fromJson(val, new TypeToken<List<DevAlarm>>() {}.getType());
+                if(reg.size() == 0){
+                    if (mAlarm.IsSoundPlaying) {
+                        mAlarm.StopSondPlay();
+                    }
+                    Define.lock.lock();
+                    try{
+                        Define.g_DevAlarmInfo.clear();
+                    }
+                    finally {
+                        Define.lock.unlock();
+                    }
+                    return;
+                }
+                SetAlarmList(reg);
+                if(!mAlarm.IsSoundPlaying) {
+                    mAlarm.PlaySound(getApplicationContext(), R.raw.alarm1);
+                }
+            } else {
+                if (mAlarm.IsSoundPlaying) {
+                    mAlarm.StopSondPlay();
+                }
+            }
+
+        }
+    };
+
+
+    private void SetAlarmList(List<DevAlarm> reg){
+        Define.lock.lock();
+        try{
+            Define.g_DevAlarmInfo.clear();
+            for(int i = 0; i < reg.size(); i++) {
+                String ShowContent = "报警值：" + reg.get(i).getAlarmValue() + " 当前值：" + reg.get(i).getNowValue() + " 报警时间：" + reg.get(i).getAlarmTime();
+                DevAlarmInfo DAI = new DevAlarmInfo();
+                DAI.setDevID(reg.get(i).getDevID());
+                DAI.setAlarmLevel(reg.get(i).getAlarmType());
+                DAI.setAlarmInfo(ShowContent);
+                DAI.setAvatar(R.drawable.alarm1);
+                Define.g_DevAlarmInfo.add(DAI);
+            }
+        }
+        finally {
+            Define.lock.unlock();
+        }
+    }
+
+
+    Runnable BKAlarmInfoGet = new Runnable(){
+        @Override
+        public void run(){
+            String PhoneNumber = mPhoneNumber;
+            while (true) {
+
+                if(IsActDestory){
+                    IsActDestory = false;
+                    break;}
+
+                String RequestUrl = Htpp.BasicUrl + "/GetDevAlarmInfo/" + mPhoneNumber;
+
+                String BackStr = Htpp.executeHttpGet(RequestUrl);
+                Message msg = new Message();
+                Bundle data = new Bundle();
+                data.putString("value", BackStr);
+                msg.setData(data);
+                handler.sendMessage(msg);
+                try {
+                    Thread.sleep(m_SleepTime);
+                }catch (InterruptedException e){}
+            }
+        }
+    };
+
+
+
     private void addFragment(Fragment fragment, String tag) {
         FragmentManager manager=getFragmentManager();
         FragmentTransaction ft=manager.beginTransaction();
@@ -121,7 +257,7 @@ public class Container extends AppCompatActivity {
         switch (item.getItemId())
         {
             case R.id.action_new:
-                Toast.makeText(this,"添加设备",Toast.LENGTH_SHORT).show();
+                AddDev();
                 return true;
             case R.id.action_exit:
                 finish();
@@ -130,6 +266,28 @@ public class Container extends AppCompatActivity {
                 return false;
         }
     }
+
+    private void AddDev(){
+        Intent intent = new Intent(this,
+                CaptureActivity.class);
+        startActivityForResult(intent, REQUEST_CODE_SCAN);
+    }
+
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        // 扫描二维码/条码回传
+        if (requestCode == REQUEST_CODE_SCAN && resultCode == RESULT_OK) {
+            if (data != null) {
+
+                String content = data.getStringExtra(DECODED_CONTENT_KEY);
+                Bitmap bitmap = data.getParcelableExtra(DECODED_BITMAP_KEY);
+                Toast.makeText(this,"content",Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
 
 
     private boolean IsHaveFragment(FragmentManager manager,FragmentTransaction ft,String Tag){
@@ -176,5 +334,30 @@ public class Container extends AppCompatActivity {
             fg = null;
         }
     }
+
+    private ArrayList<MyOnTouchListener> onTouchListeners = new ArrayList<MyOnTouchListener>(
+            10);
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        for (MyOnTouchListener listener : onTouchListeners) {
+            listener.onTouch(ev);
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    public void registerMyOnTouchListener(MyOnTouchListener myOnTouchListener) {
+        onTouchListeners.add(myOnTouchListener);
+    }
+
+    public void unregisterMyOnTouchListener(MyOnTouchListener myOnTouchListener) {
+        onTouchListeners.remove(myOnTouchListener);
+    }
+
+    public interface MyOnTouchListener {
+        public boolean onTouch(MotionEvent ev);
+    }
+
+
 
 }

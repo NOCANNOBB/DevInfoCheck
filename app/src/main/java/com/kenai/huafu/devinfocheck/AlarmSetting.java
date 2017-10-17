@@ -65,6 +65,10 @@ public class AlarmSetting extends Fragment {
             public void onClick(View view) {
                 ft = manager.beginTransaction();
                 DevCheckFragment DCF = new DevCheckFragment();
+                Bundle bundle = new Bundle();
+                bundle.putString("phone",mPhoneNumber);
+                bundle.putString("alarm","");
+                DCF.setArguments(bundle);
                 ft.replace(R.id.frame_container, DCF);
                 ft.addToBackStack(null);
                 ft.commit();
@@ -76,6 +80,9 @@ public class AlarmSetting extends Fragment {
         btnConfirm.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                if(mAlarmValue.getText().toString().isEmpty()){
+                    return;
+                }
                 Thread tpThread = new Thread(AlarmSetNetWork);
                 tpThread.start();
             }
@@ -94,21 +101,31 @@ public class AlarmSetting extends Fragment {
 
             if(BackStr == "") {
                 BackStr = "Get NULL";
+                return;
             }
+            ft = manager.beginTransaction();
+            DevCheckFragment DCF = new DevCheckFragment();
+            Bundle bundle = new Bundle();
+            bundle.putString("phone",mPhoneNumber);
+            bundle.putString("alarm","");
+            DCF.setArguments(bundle);
+            ft.replace(R.id.frame_container, DCF);
+            ft.addToBackStack(null);
+            ft.commit();
             // Toast.makeText(FirstActivity.this, "You clicked Button 1", Toast.LENGTH_SHORT).show();
             Toast.makeText(getContext(),BackStr,Toast.LENGTH_SHORT).show();
         }
     };
 
     //报警设置
-
+    //String RequestUrl = Htpp.BasicUrl + "/LogOn?pHoneNumber=" + PhoneNumber + "&PWD=" + PassWord;
     Runnable AlarmSetNetWork = new Runnable() {
 
         @Override
         public void run() {
             String PhoneNumber = mPhoneNumber;
             String AlarmSet= mAlarmValue.getText().toString().trim();
-            String RequestUrl = Htpp.BasicUrl + "/DevAlarmSet/" + mPhoneNumber;
+            String RequestUrl = Htpp.BasicUrl + "/AlarmSet?pHoneNumber=" + mPhoneNumber + "&Devid=" + mDevID + "&AlarmSetValue=" + mAlarmValue.getText().toString();
             String BackStr = Htpp.executeHttpGet(RequestUrl);
             Message msg = new Message();
             Bundle data = new Bundle();

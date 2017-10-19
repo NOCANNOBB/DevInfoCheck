@@ -15,7 +15,7 @@ public class AlarmSoundPlay {
 
     private SoundPool mSoundPool;
     private int PlayingID = -1;
-    public boolean IsSoundPlaying = false;
+    public static boolean IsSoundPlaying = false;
     public void PlaySound(Context context,int SoundID) {
         mSoundPool = new SoundPool(3, AudioManager.STREAM_MUSIC,5);
         mSoundPool.load(context,SoundID,1);

@@ -4,12 +4,15 @@ import android.app.Fragment;
 import android.app.FragmentManager;
 import android.app.FragmentTransaction;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Bitmap;
 import android.icu.text.IDNA;
 import android.os.Handler;
 import android.os.Message;
+import android.support.annotation.NonNull;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
@@ -53,14 +56,16 @@ public class Container extends AppCompatActivity {
     private static final String DECODED_CONTENT_KEY = "codedContent";
     private static final String DECODED_BITMAP_KEY = "codedBitmap";
 
+    private String NowDevID;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
 
        // requestWindowFeature(Window.FEATURE_NO_TITLE);//remove title bar  即隐藏标题栏
-      //  getSupportActionBar().hide();// 隐藏ActionBar
-        getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
+         //getSupportActionBar().hide();// 隐藏ActionBar
+        //getWindow().setFlags(WindowManager.LayoutParams.FLAG_FULLSCREEN, WindowManager.LayoutParams.FLAG_FULLSCREEN);
 
         SDKInitializer.initialize(getApplicationContext());
 
@@ -77,15 +82,25 @@ public class Container extends AppCompatActivity {
         InfoCK = (Button)findViewById(R.id.InfoCheck) ;
         MapShow = (Button)findViewById(R.id.showmap);
 
-        Intent intent = getIntent();
-        mPhoneNumber = intent.getStringExtra(MainActivity.EXTREA_PHONE);
-
+       // Intent intent = getIntent();
+      //  mPhoneNumber = intent.getStringExtra(MainActivity.EXTREA_PHONE);
+        mPhoneNumber = "13718146761";
         //frameContainer = (FrameLayout)findViewById(R.id.frame_container);
+
+        DevCheckFragment fragment1 = new DevCheckFragment();
+
+        Bundle bundle = new Bundle();
+        bundle.putString("phone",mPhoneNumber);
+        bundle.putString("alarm","");
+        fragment1.setArguments(bundle);
+        addFragment(fragment1, "DevCheckFragment");
+        SetBtnEnable(DevCheck);
 
         //设备监控
         DevCheck.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                SetBtnEnable(DevCheck);
                 DevCheckFragment fragment1 = new DevCheckFragment();
 
                 Bundle bundle = new Bundle();
@@ -99,6 +114,7 @@ public class Container extends AppCompatActivity {
         Alarm.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                SetBtnEnable(Alarm);
                 AlarmFragment fragment1 = new AlarmFragment();
                 addFragment(fragment1, "AlarmFragment");
             }
@@ -108,6 +124,7 @@ public class Container extends AppCompatActivity {
         Own.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                SetBtnEnable(Own);
                 OwnInfo fragment1 = new OwnInfo();
                 addFragment(fragment1, "OwnInfo");
             }
@@ -116,6 +133,8 @@ public class Container extends AppCompatActivity {
         InfoCK.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                SetBtnEnable(InfoCK);
+
                 DevInfoCheck fragment1 = new DevInfoCheck();
                 addFragment(fragment1, "DevInfoCheck");
             }
@@ -125,23 +144,67 @@ public class Container extends AppCompatActivity {
         MapShow.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
+                SetBtnEnable(MapShow);
                 MapShowFragment fragment1 = new MapShowFragment();
+                Bundle bundle = new Bundle();
+                bundle.putString("phone",mPhoneNumber);
+                fragment1.setArguments(bundle);
                 addFragment(fragment1, "MapShowFragment");
             }
         });
 
     }
 
+    public void SetBtnEnable(Button btn){
+        if(btn == DevCheck){
+            MapShow.setEnabled(true);
+            InfoCK.setEnabled(true);
+            Own.setEnabled(true);
+            Alarm.setEnabled(true);
+            DevCheck.setEnabled(false);
+        }
+        else if(btn == Alarm){
+            MapShow.setEnabled(true);
+            InfoCK.setEnabled(true);
+            Own.setEnabled(true);
+            Alarm.setEnabled(false);
+            DevCheck.setEnabled(true);
+        }
+        else if(btn == Own){
+            MapShow.setEnabled(true);
+            InfoCK.setEnabled(true);
+            Own.setEnabled(false);
+            Alarm.setEnabled(true);
+            DevCheck.setEnabled(true);
+        }
+        else if(btn == InfoCK){
+            MapShow.setEnabled(true);
+            InfoCK.setEnabled(false);
+            Own.setEnabled(true);
+            Alarm.setEnabled(true);
+            DevCheck.setEnabled(true);
+        }
+        else if(btn == MapShow){
+            MapShow.setEnabled(false);
+            InfoCK.setEnabled(true);
+            Own.setEnabled(true);
+            Alarm.setEnabled(true);
+            DevCheck.setEnabled(true);
+        }
+    }
+
+
     @Override
     public void onDestroy(){
 
+        Log.d("Error","Container destory");
         IsActDestory = true;
         try{
             Thread.sleep(1000);
         }
         catch (InterruptedException iex){}
 
-        if (mAlarm.IsSoundPlaying) {
+        if (AlarmSoundPlay.IsSoundPlaying) {
             mAlarm.StopSondPlay();
         }
 
@@ -158,7 +221,7 @@ public class Container extends AppCompatActivity {
                 Gson gson =new Gson();
                 List<DevAlarm> reg = gson.fromJson(val, new TypeToken<List<DevAlarm>>() {}.getType());
                 if(reg.size() == 0){
-                    if (mAlarm.IsSoundPlaying) {
+                    if (AlarmSoundPlay.IsSoundPlaying) {
                         mAlarm.StopSondPlay();
                     }
                     Define.lock.lock();
@@ -171,15 +234,30 @@ public class Container extends AppCompatActivity {
                     return;
                 }
                 SetAlarmList(reg);
-                if(!mAlarm.IsSoundPlaying) {
+                if(!AlarmSoundPlay.IsSoundPlaying) {
                     mAlarm.PlaySound(getApplicationContext(), R.raw.alarm1);
                 }
             } else {
-                if (mAlarm.IsSoundPlaying) {
+                val = "请检查网络连接";
+                Toast.makeText(getApplicationContext(),val,Toast.LENGTH_SHORT).show();
+                if (AlarmSoundPlay.IsSoundPlaying) {
                     mAlarm.StopSondPlay();
                 }
             }
 
+        }
+    };
+
+    Handler handler2 = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            Bundle data = msg.getData();
+            String val = data.getString("value");
+            if(val.isEmpty()){
+                val = "请检查网络连接";
+            }
+            Toast.makeText(getApplicationContext(),val,Toast.LENGTH_SHORT).show();
         }
     };
 
@@ -268,7 +346,7 @@ public class Container extends AppCompatActivity {
     }
 
     private void AddDev(){
-        Intent intent = new Intent(this,
+        Intent intent = new Intent(Container.this,
                 CaptureActivity.class);
         startActivityForResult(intent, REQUEST_CODE_SCAN);
     }
@@ -283,11 +361,40 @@ public class Container extends AppCompatActivity {
 
                 String content = data.getStringExtra(DECODED_CONTENT_KEY);
                 Bitmap bitmap = data.getParcelableExtra(DECODED_BITMAP_KEY);
-                Toast.makeText(this,"content",Toast.LENGTH_SHORT).show();
+
+                NowDevID = content;
+
+                AddDevIDToServer();
+
             }
         }
     }
 
+    private void AddDevIDToServer(){
+        Thread tpThread = new Thread(AddDevInfo);
+        tpThread.start();
+    }
+
+
+
+
+
+    Runnable AddDevInfo  = new Runnable() {
+
+        @Override
+        public void run() {
+            // TODO
+            // 在这里进行 http request.网络请求相关操作
+            String tID = NowDevID.substring(0,5);
+            String RequestUrl = Htpp.BasicUrl + "/AddDev?pHoneNumber=" + mPhoneNumber + "&Devid=" + tID;
+            String BackStr = Htpp.executeHttpGet(RequestUrl);
+            Message msg = new Message();
+            Bundle data = new Bundle();
+            data.putString("value", BackStr);
+            msg.setData(data);
+            handler2.sendMessage(msg);
+        }
+    };
 
 
     private boolean IsHaveFragment(FragmentManager manager,FragmentTransaction ft,String Tag){

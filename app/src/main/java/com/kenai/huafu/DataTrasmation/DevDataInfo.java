@@ -12,6 +12,7 @@ public class DevDataInfo {
     private String mWENDU;   //信息标题
     private String mDIANLIU; //详细信息
     private String mDIANYA;
+    private String mUpTime;
 
     //信息ID处理函数
     public void setServerDevInfo(ServerDevInfo serverDevInfo) {
@@ -41,6 +42,13 @@ public class DevDataInfo {
     }
     public String getDIANYA() {
         return mDIANYA;
+    }
+
+    public void setUpTime(String upTime){
+        this.mUpTime = upTime;
+    }
+    public String getUpTime(){
+        return this.mUpTime;
     }
 
 }

@@ -13,23 +13,38 @@
         android:id="@+id/tv_DevID"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:textColor="@color/colorPrimary"
         android:text="设备ID：10001" />
 
     <TextView
         android:id="@+id/tv_DIANLIU"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:textColor="@color/colorPrimary"
         android:text="设备电流：10A" />
 
     <TextView
         android:id="@+id/tv_DIANYA"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:textColor="@color/colorPrimary"
         android:text="设备电压：200" />
 
     <TextView
         android:id="@+id/tv_WENDU"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:textColor="@color/colorPrimary"
         android:text="设备温度：-4℃" />
+    <TextView
+        android:id="@+id/tv_uptime"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:textSize="24sp"
+        android:textColor="@color/colorPrimary"
+        android:text="xxxxxxxxx" />
 </LinearLayout>

@@ -2,8 +2,12 @@ package com.kenai.huafu.devinfocheck;
 
 import android.app.Fragment;
 import android.content.Context;
+import android.content.Intent;
+import android.content.SharedPreferences;
 import android.graphics.Point;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
 import android.view.View;
@@ -16,9 +20,18 @@ import android.widget.Toast;
 import com.baidu.location.BDAbstractLocationListener;
 import com.baidu.mapapi.map.MapView;
 import com.baidu.mapapi.model.LatLng;
+import com.google.gson.Gson;
+import com.google.gson.reflect.TypeToken;
 import com.kenai.huafu.DataTrasmation.ClsBaiduMap;
+import com.kenai.huafu.DataTrasmation.Define;
+import com.kenai.huafu.DataTrasmation.DevAlarm;
 import com.kenai.huafu.DataTrasmation.DevInfo;
+import com.kenai.huafu.DataTrasmation.Htpp;
 import com.kenai.huafu.DataTrasmation.InfoWindowHolder;
+import com.kenai.huafu.DataTrasmation.MapDevDataInfo;
+
+import java.security.PublicKey;
+import java.util.List;
 
 /**
  * Created by zhang on 2017/9/29.
@@ -30,37 +43,13 @@ public class MapShowFragment extends Fragment {
     private LinearLayout baidumap_infowindow;
     private ClsBaiduMap  mbaiduMap;
     private TextView mwdShow;
-
+    private String mPhoneNumber;
     public Context appContext;
-
+    private boolean IsThreadStop = false;
     private Container.MyOnTouchListener mTouchListener;
 
     @Override
     public View onCreateView(LayoutInflater inflater, ViewGroup container, Bundle savedInstanceState){
-
-        mTouchListener = new Container.MyOnTouchListener() {
-
-            @Override
-            public boolean onTouch(MotionEvent ev) {
-                switch (ev.getAction()){
-                    case MotionEvent.ACTION_DOWN:
-                        String BackStr = "屏幕坐标：" + ev.getX() + "=== " + ev.getY();
-                        LatLng latlng1 = mMapView.getMap().getProjection().fromScreenLocation(new Point((int)ev.getX(),(int)ev.getY()));
-
-                        BackStr = BackStr + "经纬度坐标：" + latlng1.longitude + "===" + latlng1.latitude;
-                        Toast.makeText(getContext(), BackStr, Toast.LENGTH_SHORT).show();
-                        break;
-                    case MotionEvent.ACTION_UP:
-                        //Toast.makeText(getContext(), "up事件", Toast.LENGTH_SHORT).show();
-                        break;
-                    default:
-                        break;
-                }
-                return true;
-            }
-        };
-        ((Container) getActivity())
-                .registerMyOnTouchListener(mTouchListener);
         return inflater.inflate(R.layout.devmapshow_frame,container,false);
     }
 
@@ -75,19 +64,27 @@ public class MapShowFragment extends Fragment {
         super.onActivityCreated(savedInstanceState);
 
 
+        Bundle bundle = getArguments();
+
+        mPhoneNumber = bundle.getString("phone");
+
+
         mbaiduMap = new ClsBaiduMap(getContext());
         mbaiduMap.DoInitlization();//地图初始化
 
         mMapView = (MapView)getActivity().findViewById(R.id.baidumap);
-        mbaiduMap.DoClsInit(mMapView);//地图信息初始化
 
-        mMapView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                mwdShow.setText("map dianji");
-                Toast.makeText(getContext(),"diandiandian",Toast.LENGTH_SHORT).show();
-            }
-        });
+
+        baidumap_infowindow = (LinearLayout) LayoutInflater.from (getContext()).inflate (R.layout.baidumap_infowindow, null);
+
+        mbaiduMap.DoClsInit(mMapView,baidumap_infowindow);//地图信息初始化
+
+        mbaiduMap.initMarkerClickEvent();
+
+
+
+        Thread tpThread = new Thread(GetDevMapInfos);
+        tpThread.start();
 
 
 
@@ -116,5 +113,74 @@ public class MapShowFragment extends Fragment {
         mbaiduMap.initMarkerClickEvent(baidumap_infowindow);*/
         //qqweqqwewww
     }
+
+    Handler handler = new Handler() {
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+            Bundle data = msg.getData();
+            String val = data.getString("value");
+            GetMapDevInfo(val);
+        }
+    };
+
+
+    private void GetMapDevInfo(String devInfos){
+        Gson gson =new Gson();
+        List<MapDevDataInfo> reg = gson.fromJson(devInfos, new TypeToken<List<MapDevDataInfo>>() {}.getType());
+        for (MapDevDataInfo mpi : reg) {
+
+            DevInfo devInfo = new DevInfo();
+            devInfo.setId(mpi.getDevDataInfo().getServerDevInfo().getDevID());
+            devInfo.setTitle(mpi.getDevDataInfo().getServerDevInfo().getDevID());
+            devInfo.setDevWENDU(mpi.getDevDataInfo().getWENDU());
+            devInfo.setDevDIANLIU(mpi.getDevDataInfo().getDIANLIU());
+            devInfo.setDevDIANYA(mpi.getDevDataInfo().getDIANYA());
+            devInfo.setUpTime(mpi.getDevDataInfo().getUpTime());
+            //devInfo.
+            //if(mpi.getDevAlarmInfo() == null) {
+                mbaiduMap.AddPoint(mpi.getWeidu(), mpi.getJingdu(), R.drawable.mapmark, devInfo);
+            //}
+        }
+    };
+
+    @Override
+    public void onDestroy(){
+
+        IsThreadStop = true;
+        try{
+            Thread.sleep(1000);
+        }
+        catch (InterruptedException iex){}
+        super.onDestroy();
+    }
+
+
+    Runnable GetDevMapInfos = new Runnable() {
+
+        @Override
+        public void run() {
+            // TODO
+            // 在这里进行 http request.网络请求相关操作
+            while(true){
+                if(IsThreadStop){
+                    IsThreadStop = false;
+                    break;
+                }
+                String RequestUrl = Htpp.BasicUrl + "/GetDevMapInfo/" + mPhoneNumber;
+                String BackStr = Htpp.executeHttpGet(RequestUrl);
+                Message msg = new Message();
+                Bundle data = new Bundle();
+                data.putString("value", BackStr);
+                msg.setData(data);
+                handler.sendMessage(msg);
+                try{
+                    Thread.sleep(4000);
+                }
+                catch (InterruptedException iex){}
+            }
+
+        }
+    };
 
 }

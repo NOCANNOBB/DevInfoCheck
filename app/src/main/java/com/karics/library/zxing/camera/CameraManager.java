@@ -81,7 +81,7 @@ public final class CameraManager {
 			throws IOException {
 		Camera theCamera = camera;
 		if (theCamera == null) {
-
+			//requestedCameraId = 0;
 			if (requestedCameraId >= 0) {
 				theCamera = OpenCameraInterface.open(requestedCameraId);
 			} else {

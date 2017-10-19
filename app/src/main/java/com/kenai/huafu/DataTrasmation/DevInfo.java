@@ -15,6 +15,7 @@ public class DevInfo implements Serializable {
     private String DevWENDU; //详细信息
     private String DevDIANLIU; //详细信息
     private String DevDIANYA; //详细信息
+    private String UpTime;
     private int avatar; //图片ID
 
 
@@ -65,5 +66,13 @@ public class DevInfo implements Serializable {
     }
     public int getAvatar() {
         return avatar;
+    }
+
+
+    public void setUpTime(String upTime){
+        this.UpTime = upTime;
+    }
+    public String getUpTime(){
+        return this.UpTime;
     }
 }

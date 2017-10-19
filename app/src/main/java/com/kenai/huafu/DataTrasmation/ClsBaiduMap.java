@@ -34,12 +34,14 @@ public class ClsBaiduMap {
         appContext = context;
     }
 
+    private LinearLayout mbaidumap_infowindow;
     public void DoInitlization(){
 
     }
-    public void DoClsInit(MapView tpmapView){
+    public void DoClsInit(MapView tpmapView, final LinearLayout baidumap_infowindow){
         mapView = tpmapView;
         mBaidumap = mapView.getMap();
+        mbaidumap_infowindow = baidumap_infowindow;
     }
 
     public void SetCenter(double WEIDU,double JINDU){
@@ -73,9 +75,11 @@ public class ClsBaiduMap {
 
         bundle.putSerializable("info",Infos);
         marker.setExtraInfo(bundle);
+        createInfoWindow(mbaidumap_infowindow,Infos);
+
     }
 
-    public void initMarkerClickEvent(final  LinearLayout baidumap_infowindow)
+    public void initMarkerClickEvent()
     {
         // 对Marker的点击
         mBaidumap.setOnMarkerClickListener(new BaiduMap.OnMarkerClickListener()
@@ -85,7 +89,7 @@ public class ClsBaiduMap {
             {
                 DevInfo ShowInfo = (DevInfo) marker.getExtraInfo().get("info");
 
-                createInfoWindow(baidumap_infowindow);
+                createInfoWindow(mbaidumap_infowindow,ShowInfo);
 
 
 
@@ -94,7 +98,7 @@ public class ClsBaiduMap {
                 p.y -= 47;
                 LatLng llInfo = mBaidumap.getProjection().fromScreenLocation(p);
 
-                BitmapDescriptor bitmap = BitmapDescriptorFactory.fromView(baidumap_infowindow);
+                BitmapDescriptor bitmap = BitmapDescriptorFactory.fromView(mbaidumap_infowindow);
 
                 // 为弹出的InfoWindow添加点击事件
                 InfoWindow mInfoWindow = new InfoWindow(bitmap,llInfo,0, new InfoWindow.OnInfoWindowClickListener() {
@@ -110,25 +114,30 @@ public class ClsBaiduMap {
         });
     }
 
-    private void createInfoWindow(LinearLayout baidumap_infowindow){
+    private void createInfoWindow(LinearLayout baidumap_infowindow, DevInfo dinfo){
 
         InfoWindowHolder holder = null;
         if(baidumap_infowindow.getTag () == null){
             holder = new InfoWindowHolder ();
 
             holder.tv_DevID = (TextView) baidumap_infowindow.findViewById (R.id.tv_DevID);
+
             holder.tv_WENDU = (TextView) baidumap_infowindow.findViewById (R.id.tv_WENDU);
+
             holder.tv_DIANYA = (TextView) baidumap_infowindow.findViewById (R.id.tv_DIANYA);
+
             holder.tv_DIANLIU = (TextView) baidumap_infowindow.findViewById (R.id.tv_DIANLIU);
+            holder.tv_UPTIME = (TextView) baidumap_infowindow.findViewById (R.id.tv_uptime);
+
 
             baidumap_infowindow.setTag (holder);
         }
         holder = (InfoWindowHolder) baidumap_infowindow.getTag ();
-
-        //holder.tv_entname.setText (bean.getName());
-        //holder.tv_checkdept.setText (bean.getName());
-        //holder.tv_checkuser.setText (bean.getDistance());
-        //holder.tv_checktime.setText (bean.getName());
+        holder.tv_DevID.setText("设备ID： " + dinfo.getId());
+        holder.tv_WENDU.setText("温度：" + dinfo.getDevWENDU());
+        holder.tv_DIANYA.setText("电压：" + dinfo.getDevDIANYA());
+        holder.tv_DIANLIU.setText("电流：" + dinfo.getDevDIANLIU());
+        holder.tv_UPTIME.setText("更新时间：" + dinfo.getUpTime());
     }
 
 

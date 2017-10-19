@@ -1,5 +1,6 @@
 package com.kenai.huafu.devinfocheck;
 
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.app.Dialog;
 import android.app.Fragment;
@@ -16,6 +17,8 @@ import android.view.LayoutInflater;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.Window;
+import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.ListView;
@@ -34,6 +37,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Created by zhang on 2017/9/28.
@@ -95,60 +99,76 @@ public class DevCheckFragment extends Fragment {
 
 
     private void FillListView(){
+        try {
+            List<Map<String, Object>> rlist = new ArrayList<Map<String, Object>>();
+            for (int i = 0; i < mlistInfo.size(); i++) {
+                DevInfo dinfo = mlistInfo.get(i);
+                Map<String, Object> map = new HashMap<String, Object>();
+                map.put("title", dinfo.getId());
+                String strText = "电流：" + dinfo.getDevDIANLIU() + "  电压：" + dinfo.getDevDIANYA() + "  温度：" + dinfo.getDevWENDU();
+                map.put("info", strText);
+                map.put("img", dinfo.getAvatar());
+                rlist.add(map);
+            }
 
-        List<Map<String,Object>>rlist = new ArrayList<Map<String,Object>>();
-        for(int i = 0; i < mlistInfo.size(); i++){
-            DevInfo dinfo = mlistInfo.get(i);
-            Map<String, Object> map = new HashMap<String, Object>();
-            map.put("title",dinfo.getId());
-            String strText = "电流：" + dinfo.getDevDIANLIU() + "  电压：" + dinfo.getDevDIANYA()+ "  温度：" + dinfo.getDevWENDU();
-            map.put("info",strText);
-            map.put("img",dinfo.getAvatar());
-            rlist.add(map);
+            Activity act = getActivity();
+
+
+            ListViewSimpleCurAdapter listAdapter = new ListViewSimpleCurAdapter(act, rlist, R.layout.devlistitem, new String[]{"title", "info", "img"}, new int[]{R.id.title, R.id.info, R.id.img});
+
+            mListView.setAdapter(listAdapter);
         }
-
-        ListViewSimpleCurAdapter listAdapter = new ListViewSimpleCurAdapter(getActivity(),rlist,R.layout.devlistitem,new String[]{"title","info","img"},new int[]{R.id.title,R.id.info,R.id.img});
-
-        mListView.setAdapter(listAdapter);
+        catch (Exception e){
+            Log.d("Error","FillListView Error");
+        }
     }
 
 
     private void CreateItems(){
-        AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
-        ListView modeListView = new ListView(getActivity());
-        String[] modes = new String[]{"删除设备","报警设置","取消"};
-        ArrayAdapter<String> modeAdapter = new ArrayAdapter<>(getActivity(),android.R.layout.simple_list_item_1,
-                android.R.id.text1,modes);
-        modeListView.setAdapter(modeAdapter);
-        builder.setView(modeListView);
-        final Dialog dialog = builder.create();
-        dialog.show();
-        modeListView.setOnItemClickListener(new AdapterView.OnItemClickListener(){
-            @Override
-            public void onItemClick(AdapterView<?>parent,View view,int position,long id)
-            {
+        try {
+            final AlertDialog.Builder builder = new AlertDialog.Builder(getActivity());
+            ListView modeListView = new ListView(getActivity());
+            String[] modes = new String[]{"删除设备", "报警设置", "坐标设置", "取消"};
+            ArrayAdapter<String> modeAdapter = new ArrayAdapter<>(getActivity(), android.R.layout.simple_list_item_1,
+                    android.R.id.text1, modes);
+            modeListView.setAdapter(modeAdapter);
+            builder.setView(modeListView);
+            final Dialog dialog = builder.create();
+            dialog.show();
+            modeListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
+                @Override
+                public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
 
-                if(position == 0)
-                {
-                    DoRemoveServer(ClickItemPostion);
-                    Toast.makeText(getContext(),"第一个",Toast.LENGTH_SHORT).show();
-                }else if (position == 1){
-                    ft = manager.beginTransaction();
-                    AlarmSetting AS = new AlarmSetting();
-                    Bundle bundle = new Bundle();
-                    bundle.putString("DevID",mlistInfo.get(ClickItemPostion).getId());
-                    bundle.putString("phone",mPhoneNumber);
-                    AS.setArguments(bundle);
-                    ft.replace(R.id.frame_container, AS);
-                    ft.addToBackStack(null);
-                    ft.commit();
-                }
-                else if(position == 2){
+                    if (position == 0) {
+                        DoRemoveServer(ClickItemPostion);
+                        Toast.makeText(getContext(), "第一个", Toast.LENGTH_SHORT).show();
+                    } else if (position == 1) {
+                        ft = manager.beginTransaction();
+                        AlarmSetting AS = new AlarmSetting();
+                        Bundle bundle = new Bundle();
+                        bundle.putString("DevID", mlistInfo.get(ClickItemPostion).getId());
+                        bundle.putString("phone", mPhoneNumber);
+                        AS.setArguments(bundle);
+                        ft.replace(R.id.frame_container, AS);
+                        ft.addToBackStack(null);
+                        ft.commit();
+                    } else if (position == 2) {
+                        Intent intent = new Intent(getActivity(), DevMapSetActivity.class);
 
+
+                        intent.putExtra("DevID", mlistInfo.get(ClickItemPostion).getId());
+                        intent.putExtra("phone", mPhoneNumber);
+
+                        startActivity(intent);
+                        getActivity().finish();
+                    }
+                    dialog.dismiss();
                 }
-                dialog.dismiss();
-            }
-        });
+            });
+        }
+        catch (Exception e){
+            Log.d("Error","CreateItems Error");
+        }
     }
 
     private void DoRemoveServer(int ClickItemPostion){
@@ -200,52 +220,65 @@ public class DevCheckFragment extends Fragment {
         @Override
         public void handleMessage(Message msg) {
             super.handleMessage(msg);
-            Bundle data = msg.getData();
-            String val = data.getString("value");
-            String val2 = data.getString("bvalue");
+            try {
+                Bundle data = msg.getData();
+                String val = data.getString("value");
+                String val2 = data.getString("bvalue");
 
-            String BackStr = val;
+                String BackStr = val;
 
-            if(BackStr == "")
-            {
-                BackStr = "Get NULL";
+                if (BackStr.isEmpty()) {
+                    BackStr = "请检查网络连接";
+                    Toast.makeText(getContext(), BackStr, Toast.LENGTH_SHORT).show();
+                    return;
+                }
+                if (val2 == "1") {
+
+                    GetDevDataInfo(val);
+                }
             }
-            if(val2 == "1"){
-                GetDevDataInfo(val);
+            catch (Exception e){
+                Log.d("Error","handleMessage Error");
             }
             // Toast.makeText(FirstActivity.this, "You clicked Button 1", Toast.LENGTH_SHORT).show();
-            Toast.makeText(getContext(),BackStr,Toast.LENGTH_SHORT).show();
+
         }
     };
 
 
     private void GetDevDataInfo(String DevInfo){
-        Gson gson =new Gson();
-        List<DevDataInfo> reg = gson.fromJson(DevInfo, new TypeToken<List<DevDataInfo>>() {}.getType());
+        try {
+            Gson gson = new Gson();
+            List<DevDataInfo> reg = gson.fromJson(DevInfo, new TypeToken<List<DevDataInfo>>() {
+            }.getType());
 
-        for (DevDataInfo stu : reg) {
-            boolean isfind = false;
-            for(DevInfo devInfo: mlistInfo){
-                if(stu.getServerDevInfo().getDevID().compareTo(devInfo.getId()) == 0){
-                    isfind = true;
-                    devInfo.setDevWENDU(stu.getWENDU());
-                    devInfo.setDevDIANYA(stu.getDIANYA());
+            for (DevDataInfo stu : reg) {
+                boolean isfind = false;
+                for (DevInfo devInfo : mlistInfo) {
+                    if (stu.getServerDevInfo().getDevID().compareTo(devInfo.getId()) == 0) {
+                        isfind = true;
+                        devInfo.setDevWENDU(stu.getWENDU());
+                        devInfo.setDevDIANYA(stu.getDIANYA());
+                        devInfo.setDevDIANLIU(stu.getDIANLIU());
+                        break;
+                    }
+                }
+                if (isfind == false) {
+                    DevInfo devInfo = new DevInfo();
+                    devInfo.setId(stu.getServerDevInfo().getDevID());
                     devInfo.setDevDIANLIU(stu.getDIANLIU());
-                    break;
+                    devInfo.setDevDIANYA(stu.getDIANYA());
+                    devInfo.setDevWENDU(stu.getWENDU());
+                    devInfo.setAvatar(R.drawable.bingxiang);
+                    devInfo.setTitle(stu.getServerDevInfo().getDevName());
+                    mlistInfo.add(devInfo);
                 }
             }
-            if(isfind == false){
-                DevInfo devInfo = new DevInfo();
-                devInfo.setId(stu.getServerDevInfo().getDevID());
-                devInfo.setDevDIANLIU(stu.getDIANLIU());
-                devInfo.setDevDIANYA(stu.getDIANYA());
-                devInfo.setDevWENDU(stu.getWENDU());
-                devInfo.setAvatar(R.drawable.bingxiang);
-                devInfo.setTitle(stu.getServerDevInfo().getDevName());
-                mlistInfo.add(devInfo);
-            }
+            FillListView();
         }
-        FillListView();
+        catch(Exception ex){
+            Log.d("Error","GetDevDataInfo Error");
+        }
 
     }
 
@@ -278,7 +311,7 @@ public class DevCheckFragment extends Fragment {
                     Thread.sleep(3000);
                 }
                 catch (InterruptedException iex){
-
+                    Log.d("Error","GetDevListNetWork Error");
                 }
             }
         }

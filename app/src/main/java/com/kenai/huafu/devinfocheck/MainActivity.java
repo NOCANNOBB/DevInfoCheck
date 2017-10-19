@@ -33,7 +33,9 @@ public class MainActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
 
         PermissionRequest pr = new PermissionRequest();
-        String[] Permissions = {"android.permission.WRITE_EXTERNAL_STORAGE","android.permission.READ_EXTERNAL_STORAGE","android.permission.ACCESS_COARSE_LOCATION","android.permission.ACCESS_FINE_LOCATION"};
+        String[] Permissions = {"android.permission.CAMERA","android.permission.WRITE_EXTERNAL_STORAGE",
+                "android.permission.READ_EXTERNAL_STORAGE",
+                "android.permission.ACCESS_COARSE_LOCATION","android.permission.ACCESS_FINE_LOCATION"};
         pr.RequestPermission(this.getApplicationContext(),Permissions,this);
 
 
@@ -46,7 +48,7 @@ public class MainActivity extends AppCompatActivity {
             mPassword = pass;
             Thread tpThread = new Thread(ReLogOnnetworkTask);
             tpThread.start();
-            MainActivity.this.finish();
+            //MainActivity.this.finish();
         }
 
         super.onCreate(savedInstanceState);
@@ -80,6 +82,9 @@ public class MainActivity extends AppCompatActivity {
 
 
     }
+
+
+
 
 
     public void JumpToReg(View view){
@@ -133,6 +138,8 @@ public class MainActivity extends AppCompatActivity {
                 intent.putExtra(EXTREA_PHONE,PhoneNumber);
                 startActivity(intent);
                 MainActivity.this.finish();
+            }else{
+
             }
         }
     };

@@ -1,10 +1,15 @@
 package com.kenai.huafu.DataTrasmation;
 
+import java.io.Serializable;
+
 /**
  * Created by zhang on 2017/9/29.
  */
 
-public class DevAlarmInfo {
+public class DevAlarmInfo implements Serializable {
+
+    private static final long serialVersionUID = -758459502806858419L;
+
     private String DevID; //信息ID
     private String AlarmInfo;   //信息标题
     private String AlarmLevel; //详细信息
